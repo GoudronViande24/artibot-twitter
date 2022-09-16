@@ -1,0 +1,41 @@
+{
+	"version": "1.0.0",
+	"localizerVersion": 1,
+	"default": "en",
+	"contributors": [
+		"GoudronViande24"
+	],
+	"strings": {
+		"Following [[0]]": {
+			"fr": "Regarde [[0]]"
+		},
+
+		"New tweet by [[0]]": {
+			"fr": "Nouveau tweet par [[0]]"
+		},
+
+		"No channel named [[0]] found in guild [[1]]": {
+			"fr": "Pas de salon [[0]] trouvé dans le serveur [[1]]"
+		},
+
+		"View here: ": {
+			"fr": "Voir ici: "
+		},
+
+		"Sent notification to [[0]] in channel [[1]]": {
+			"fr": "Notification envoyée dans le serveur [[0]] dans le salon [[1]]"
+		},
+
+		"Impossible to send embed to [[0]]": {
+			"fr": "Impossible d'envoyer l'intégration dans [[0]]"
+		},
+
+		"Connected to Twitter and listening for new tweets": {
+			"fr": "Connecté à Twitter et en train d'écouter pour les nouveaux tweets"
+		},
+
+		"error detected, restarting...": {
+			"fr": "erreur détectée, redémarrage..."
+		}
+	}
+}

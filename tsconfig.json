@@ -1,0 +1,23 @@
+{
+	"include": [
+		"src"
+	],
+	"exclude": [
+		"testing.ts",
+		"private.js",
+		"dist"
+	],
+	"compilerOptions": {
+		"module": "ES2022",
+		"esModuleInterop": false,
+		"target": "ES2022",
+		"moduleResolution": "node",
+		"sourceMap": true,
+		"outDir": "dist",
+		"declaration": true,
+		"allowSyntheticDefaultImports": true
+	},
+	"lib": [
+		"es2015"
+	]
+}
