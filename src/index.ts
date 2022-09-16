@@ -1,7 +1,7 @@
 import Artibot, { Global, Module } from "artibot";
 import Localizer from "artibot-localizer";
 import { TwitterApi, ETwitterStreamEvent, StreamingV2AddRulesParams, StreamingV2DeleteRulesParams } from "twitter-api-v2";
-import { ChannelType, GuildTextBasedChannel, roleMention } from "discord.js";
+import { ChannelType, GuildTextBasedChannel, roleMention, EmbedBuilder } from "discord.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -19,6 +19,7 @@ interface ArtibotTwitterConfig {
 	channel: string;
 	everyone: boolean;
 	role?: string;
+	banner?: string;
 }
 
 export class ArtibotTwitterConfigBuilder implements ArtibotTwitterConfig {
@@ -27,6 +28,7 @@ export class ArtibotTwitterConfigBuilder implements ArtibotTwitterConfig {
 	channel: string = "twitter";
 	everyone: boolean = false;
 	role?: string;
+	banner?: string;
 
 	/** Add a twitter username */
 	addUser(username: string): ArtibotTwitterConfigBuilder {
@@ -64,9 +66,15 @@ export class ArtibotTwitterConfigBuilder implements ArtibotTwitterConfig {
 		this.role = roleName;
 		return this;
 	}
+
+	/** Set the banner image URL */
+	setBanner(bannerURL: string): ArtibotTwitterConfigBuilder {
+		this.banner = bannerURL;
+		return this;
+	}
 }
 
-export default function artibotReseauDiscord({ config: { lang } }: Artibot, cfg: Object): Module {
+export default function artibotTwitter({ config: { lang } }: Artibot, cfg: Object): Module {
 	config = cfg as ArtibotTwitterConfig;
 	localizer.setLocale(lang);
 	twitter = new TwitterApi(config.token);
@@ -94,7 +102,7 @@ const localizer: Localizer = new Localizer({
 	filePath: path.join(__dirname, "..", "locales.json")
 });
 
-async function mainFunction({ log, createEmbed, client }: Artibot): Promise<void> {
+async function mainFunction({ log, client }: Artibot): Promise<void> {
 	const add: StreamingV2AddRulesParams["add"] = [];
 	const toDelete: StreamingV2DeleteRulesParams["delete"] = { ids: [] };
 	for (const user of config.users) {
@@ -139,6 +147,12 @@ async function mainFunction({ log, createEmbed, client }: Artibot): Promise<void
 						channel.send(
 							`${tag}**${localizer.__("New tweet by [[0]]", { placeholders: [tweet.includes.users[0].name] })}**\n${localizer._("View here: ")}https://twitter.com/${tweet.includes.users[0].username}/status/${tweet.data.id}`
 						);
+						if (config.banner) channel.send({
+							embeds: [
+								new EmbedBuilder()
+									.setImage(config.banner)
+							]
+						})
 						log("Twitter", localizer.__("Sent notification to [[0]] in channel [[1]]", { placeholders: [guild.name, channel.name] }));
 					} catch (e) {
 						log("Twitter", localizer.__("Impossible to send embed to [[0]]", { placeholders: [guild.name] }));
