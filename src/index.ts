@@ -127,7 +127,6 @@ async function mainFunction({ log, client, config: { embedColor }, createEmbed }
 
 			stream.on(ETwitterStreamEvent.Data, async tweet => {
 				log("Twitter", localizer.__("New tweet by [[0]]", { placeholders: [tweet.includes.users[0].name] }), "info");
-				console.log(tweet, tweet.data, tweet.includes);
 				for (const [, guild] of client.guilds.cache) {
 					const channel = guild.channels.cache.find(channel =>
 						channel.type == ChannelType.GuildText && channel.name.toLowerCase() == config.channel.toLowerCase()
