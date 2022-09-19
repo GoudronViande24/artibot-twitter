@@ -157,7 +157,7 @@ async function mainFunction({ log, client, config: { embedColor }, createEmbed }
 							})
 							.setURL(`https://twitter.com/${tweet.includes.users[0].username}/status/${tweet.data.id}`);
 						if (tweet.data.text) embed.setDescription(tweet.data.text);
-						const image = tweet.includes.media.find(media => media.type == "photo" || media.type == "animated_gif");
+						const image = tweet.includes?.media?.find(media => media.type == "photo" || media.type == "animated_gif");
 						if (image) embed.setImage(image.url);
 						message.embeds.push(embed);
 
