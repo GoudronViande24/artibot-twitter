@@ -112,9 +112,9 @@ async function mainFunction({ log, client, config: { embedColor }, createEmbed }
 	while (true) {
 		try {
 			const activeRules = await twitter.v2.streamRules();
-			for (const { id } of activeRules.data) toDelete.ids.push(id);
+			if (activeRules.data) for (const { id } of activeRules.data) toDelete.ids.push(id);
 
-			await twitter.v2.updateStreamRules({ delete: toDelete });
+			if (toDelete.ids.length) await twitter.v2.updateStreamRules({ delete: toDelete });
 			await twitter.v2.updateStreamRules({ add });
 
 			for (const user of config.users) log("Twitter", localizer.__("Following [[0]]", { placeholders: [user] }), "log");
