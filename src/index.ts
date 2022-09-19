@@ -1,7 +1,7 @@
 import Artibot, { Global, Module } from "artibot";
 import Localizer from "artibot-localizer";
 import { TwitterApi, ETwitterStreamEvent, StreamingV2AddRulesParams, StreamingV2DeleteRulesParams } from "twitter-api-v2";
-import { ChannelType, GuildTextBasedChannel, roleMention, EmbedBuilder } from "discord.js";
+import { ChannelType, GuildTextBasedChannel, roleMention, EmbedBuilder, ColorResolvable, MessageOptions } from "discord.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -102,7 +102,7 @@ const localizer: Localizer = new Localizer({
 	filePath: path.join(__dirname, "..", "locales.json")
 });
 
-async function mainFunction({ log, client }: Artibot): Promise<void> {
+async function mainFunction({ log, client, config: { embedColor }, createEmbed }: Artibot): Promise<void> {
 	const add: StreamingV2AddRulesParams["add"] = [];
 	const toDelete: StreamingV2DeleteRulesParams["delete"] = { ids: [] };
 	for (const user of config.users) {
@@ -120,11 +120,14 @@ async function mainFunction({ log, client }: Artibot): Promise<void> {
 			for (const user of config.users) log("Twitter", localizer.__("Following [[0]]", { placeholders: [user] }), "log");
 
 			const stream = await twitter.v2.searchStream({
-				expansions: "author_id"
+				expansions: "author_id,attachments.media_keys",
+				"user.fields": "profile_image_url",
+				"media.fields": "url"
 			});
 
-			stream.on(ETwitterStreamEvent.Data, tweet => {
+			stream.on(ETwitterStreamEvent.Data, async tweet => {
 				log("Twitter", localizer.__("New tweet by [[0]]", { placeholders: [tweet.includes.users[0].name] }), "info");
+				console.log(tweet, tweet.data, tweet.includes);
 				for (const [, guild] of client.guilds.cache) {
 					const channel = guild.channels.cache.find(channel =>
 						channel.type == ChannelType.GuildText && channel.name.toLowerCase() == config.channel.toLowerCase()
@@ -135,7 +138,7 @@ async function mainFunction({ log, client }: Artibot): Promise<void> {
 						continue;
 					}
 
-					let tag: string = "";
+					let tag: string;
 					if (config.everyone) {
 						tag = "@everyone ";
 					} else if (config.role) {
@@ -144,15 +147,27 @@ async function mainFunction({ log, client }: Artibot): Promise<void> {
 					}
 
 					try {
-						channel.send(
-							`${tag}**${localizer.__("New tweet by [[0]]", { placeholders: [tweet.includes.users[0].name] })}**\n${localizer._("View here: ")}https://twitter.com/${tweet.includes.users[0].username}/status/${tweet.data.id}`
+						const message: MessageOptions = { embeds: [] }
+						const embed = createEmbed()
+							.setTitle(localizer._("New Tweet"))
+							.setAuthor({
+								name: `${tweet.includes.users[0].name} (${tweet.includes.users[0].username})`,
+								iconURL: tweet.includes.users[0].profile_image_url,
+								url: "https://twitter.com/" + tweet.includes.users[0].username
+							})
+							.setURL(`https://twitter.com/${tweet.includes.users[0].username}/status/${tweet.data.id}`);
+						if (tweet.data.text) embed.setDescription(tweet.data.text);
+						const image = tweet.includes.media.find(media => media.type == "photo" || media.type == "animated_gif");
+						if (image) embed.setImage(image.url);
+						message.embeds.push(embed);
+
+						if (config.banner) message.embeds.push(new EmbedBuilder()
+							.setImage(config.banner)
+							.setColor(embedColor as ColorResolvable)
 						);
-						if (config.banner) channel.send({
-							embeds: [
-								new EmbedBuilder()
-									.setImage(config.banner)
-							]
-						})
+
+						if (tag) message.content = tag;
+						await channel.send(message);
 						log("Twitter", localizer.__("Sent notification to [[0]] in channel [[1]]", { placeholders: [guild.name, channel.name] }));
 					} catch (e) {
 						log("Twitter", localizer.__("Impossible to send embed to [[0]]", { placeholders: [guild.name] }));

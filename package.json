@@ -1,6 +1,6 @@
 {
   "name": "artibot-twitter",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Send embeds to Discord when a tweet is posted",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

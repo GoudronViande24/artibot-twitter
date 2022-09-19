@@ -14,6 +14,7 @@ const artibot = new Artibot({
 artibot.registerModule(artibotTwitter, new ArtibotTwitterConfigBuilder()
 	.addUser("GoudronViande24")
 	.setToken(TWITTER_TOKEN)
+	.setBanner("https://t4.ftcdn.net/jpg/04/28/76/95/360_F_428769564_NB2T4JM9E2xsxFdXXwqW717HwgaZdpAq.jpg")
 );
 
 artibot.login({ token: DISCORD_TOKEN });
