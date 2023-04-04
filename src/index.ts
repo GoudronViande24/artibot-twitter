@@ -77,8 +77,16 @@ export class ArtibotTwitterConfigBuilder implements ArtibotTwitterConfig {
 	}
 }
 
-export default function artibotTwitter({ config: { lang } }: Artibot, config: ArtibotTwitterConfig): Module {
+let config: ArtibotTwitterConfig;
+let twitter: TwitterApi;
+
+const localizer: Localizer = new Localizer({
+	filePath: path.join(__dirname, "..", "locales.json")
+});
+
+export default function artibotTwitter({ config: { lang } }: Artibot, twitterConfig: ArtibotTwitterConfig): Module {
 	localizer.setLocale(lang);
+	config = twitterConfig;
 	if (!config.token) throw new Error(localizer._("No token provided for Twitter API"));
 	twitter = new TwitterApi(config.token);
 
@@ -97,13 +105,6 @@ export default function artibotTwitter({ config: { lang } }: Artibot, config: Ar
 		]
 	});
 }
-
-let config: ArtibotTwitterConfig;
-let twitter: TwitterApi;
-
-const localizer: Localizer = new Localizer({
-	filePath: path.join(__dirname, "..", "locales.json")
-});
 
 async function mainFunction({ client, config: { embedColor }, createEmbed }: Artibot): Promise<void> {
 	const add: StreamingV2AddRulesParams["add"] = [];
