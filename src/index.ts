@@ -1,7 +1,7 @@
-import Artibot, { Global, Module } from "artibot";
+import Artibot, { Global, Module, log } from "artibot";
 import Localizer from "artibot-localizer";
 import { TwitterApi, ETwitterStreamEvent, StreamingV2AddRulesParams, StreamingV2DeleteRulesParams } from "twitter-api-v2";
-import { ChannelType, GuildTextBasedChannel, roleMention, EmbedBuilder, ColorResolvable, MessageOptions } from "discord.js";
+import { ChannelType, GuildTextBasedChannel, roleMention, EmbedBuilder, ColorResolvable, MessageCreateOptions } from "discord.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -15,7 +15,7 @@ const { version } = require('../package.json');
 
 interface ArtibotTwitterConfig {
 	users: string[];
-	token: string
+	token?: string
 	channel: string;
 	everyone: boolean;
 	role?: string;
@@ -24,59 +24,62 @@ interface ArtibotTwitterConfig {
 
 export class ArtibotTwitterConfigBuilder implements ArtibotTwitterConfig {
 	users: string[] = [];
-	token: string;
+	token?: string;
 	channel: string = "twitter";
 	everyone: boolean = false;
 	role?: string;
 	banner?: string;
 
 	/** Add a twitter username */
-	addUser(username: string): ArtibotTwitterConfigBuilder {
+	addUser(username: string): this {
 		if (username.startsWith("@")) username = username.replace("@", "");
 		this.users.push(username);
 		return this;
 	}
 
 	/** Add multiple twitter usernames */
-	addUsers(usernames: string[]): ArtibotTwitterConfigBuilder {
-		for (const username of usernames) this.addUser(username);
+	addUsers(...usernames: string[] | string[][]): this {
+		for (const username of usernames) {
+			if (Array.isArray(username)) this.addUsers(...username);
+			else this.addUser(username);
+		}
 		return this;
 	}
 
 	/** Set the authentication token for Twitter API */
-	setToken(token: string): ArtibotTwitterConfigBuilder {
+	setToken(token: string): this {
 		this.token = token;
 		return this;
 	}
 
 	/** Set the channel name where to send notifications */
-	setChannel(channel: string): ArtibotTwitterConfigBuilder {
+	setChannel(channel: string): this {
 		this.channel = channel;
 		return this;
 	}
 
 	/** Tag everyone when a new tweet is posted? */
-	tagEveryone(value: boolean = true): ArtibotTwitterConfigBuilder {
+	tagEveryone(value: boolean = true): this {
 		this.everyone = value;
 		return this;
 	}
 
 	/** Set the role name to ping when a new tweet is posted */
-	setRole(roleName: string): ArtibotTwitterConfigBuilder {
+	setRole(roleName: string): this {
 		this.role = roleName;
 		return this;
 	}
 
 	/** Set the banner image URL */
-	setBanner(bannerURL: string): ArtibotTwitterConfigBuilder {
+	setBanner(bannerURL: string): this {
 		this.banner = bannerURL;
 		return this;
 	}
 }
 
-export default function artibotTwitter({ config: { lang } }: Artibot, cfg: Object): Module {
-	config = cfg as ArtibotTwitterConfig;
+export default function artibotTwitter({ config: { lang } }: Artibot, config: ArtibotTwitterConfig): Module {
 	localizer.setLocale(lang);
+	if (!config.token) throw new Error(localizer._("No token provided for Twitter API"));
 	twitter = new TwitterApi(config.token);
 
 	return new Module({
@@ -102,7 +105,7 @@ const localizer: Localizer = new Localizer({
 	filePath: path.join(__dirname, "..", "locales.json")
 });
 
-async function mainFunction({ log, client, config: { embedColor }, createEmbed }: Artibot): Promise<void> {
+async function mainFunction({ client, config: { embedColor }, createEmbed }: Artibot): Promise<void> {
 	const add: StreamingV2AddRulesParams["add"] = [];
 	const toDelete: StreamingV2DeleteRulesParams["delete"] = { ids: [] };
 	for (const user of config.users) {
@@ -126,8 +129,9 @@ async function mainFunction({ log, client, config: { embedColor }, createEmbed }
 			});
 
 			stream.on(ETwitterStreamEvent.Data, async tweet => {
+				if (!tweet.includes || !tweet.includes.users || !tweet.includes.users[0]) return;
 				log("Twitter", localizer.__("New tweet by [[0]]", { placeholders: [tweet.includes.users[0].name] }), "info");
-				for (const [, guild] of client.guilds.cache) {
+				for (const [, guild] of client!.guilds.cache) {
 					const channel = guild.channels.cache.find(channel =>
 						channel.type == ChannelType.GuildText && channel.name.toLowerCase() == config.channel.toLowerCase()
 					) as GuildTextBasedChannel;
@@ -137,17 +141,17 @@ async function mainFunction({ log, client, config: { embedColor }, createEmbed }
 						continue;
 					}
 
-					let tag: string;
+					let tag: string | undefined;
 					if (config.everyone) {
 						tag = "@everyone ";
 					} else if (config.role) {
-						const role = guild.roles.cache.find(role => role.name.toLowerCase() == config.role.toLowerCase());
+						const role = guild.roles.cache.find(role => role.name.toLowerCase() == config.role!.toLowerCase());
 						if (role) tag = roleMention(role.id) + " ";
 					}
 
 					try {
-						const message: MessageOptions = { embeds: [] }
-						const embed = createEmbed()
+						const message: MessageCreateOptions = { embeds: [] };
+						const embed: EmbedBuilder = createEmbed()
 							.setTitle(localizer._("New Tweet"))
 							.setAuthor({
 								name: `${tweet.includes.users[0].name} (${tweet.includes.users[0].username})`,
@@ -157,12 +161,12 @@ async function mainFunction({ log, client, config: { embedColor }, createEmbed }
 							.setURL(`https://twitter.com/${tweet.includes.users[0].username}/status/${tweet.data.id}`);
 						if (tweet.data.text) embed.setDescription(tweet.data.text);
 						const image = tweet.includes?.media?.find(media => media.type == "photo" || media.type == "animated_gif");
-						if (image) embed.setImage(image.url);
-						message.embeds.push(embed);
+						if (image) embed.setImage(image.url!);
+						message.embeds!.push(embed);
 
-						if (config.banner) message.embeds.push(new EmbedBuilder()
+						if (config.banner) message.embeds!.push(new EmbedBuilder()
 							.setImage(config.banner)
-							.setColor(embedColor as ColorResolvable)
+							.setColor(embedColor)
 						);
 
 						if (tag) message.content = tag;
@@ -170,7 +174,7 @@ async function mainFunction({ log, client, config: { embedColor }, createEmbed }
 						log("Twitter", localizer.__("Sent notification to [[0]] in channel [[1]]", { placeholders: [guild.name, channel.name] }));
 					} catch (e) {
 						log("Twitter", localizer.__("Impossible to send embed to [[0]]", { placeholders: [guild.name] }));
-						log("Twitter", e, "debug");
+						log("Twitter", (e as Error).message, "debug");
 					}
 				}
 			});
@@ -178,7 +182,7 @@ async function mainFunction({ log, client, config: { embedColor }, createEmbed }
 			break;
 		} catch (e) {
 			log("Twitter", localizer._("error detected, restarting..."), "warn");
-			log("Twitter", e, "debug");
+			log("Twitter", (e as Error).message, "debug");
 			continue;
 		}
 	}

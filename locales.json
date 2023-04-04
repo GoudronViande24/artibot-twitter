@@ -40,6 +40,10 @@
 
 		"New Tweet": {
 			"fr": "Nouveau Tweet"
+		},
+
+		"No token provided for Twitter API": {
+			"fr": "Aucun jeton fourni pour l'API Twitter"
 		}
 	}
 }
